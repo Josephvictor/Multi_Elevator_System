@@ -1,4 +1,4 @@
-package Enumerations;
+package System.Enumerations;
 
 public enum DoorState {
     OPEN, CLOSE

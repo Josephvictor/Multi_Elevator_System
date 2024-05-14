@@ -1,4 +1,4 @@
-package Model.Button;
+package System.Model.Button;
 
 public class DoorButton extends Button{
 
