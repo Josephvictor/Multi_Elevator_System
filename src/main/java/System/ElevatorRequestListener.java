@@ -3,5 +3,5 @@ package System;
 import System.Enumerations.Direction;
 
 public interface ElevatorRequestListener {
-    void onFloorRequest(Direction direction);
+    void onFloorRequest(int floor, Direction direction);
 }

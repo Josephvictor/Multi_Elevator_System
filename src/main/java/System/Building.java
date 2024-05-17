@@ -6,16 +6,17 @@ import System.Model.Others.ElevatorCar;
 import System.Model.Others.Floor;
 import System.Model.Panel.ElevatorPanel;
 import System.Model.Panel.HallPanel;
+import lombok.Data;
 
 import java.util.ArrayList;
-import java.util.EventListener;
 import java.util.List;
 
+@Data
 public class Building {
     private int totalFloors;
     private int totalElevators;
-    private List<Floor> floors;
-    private List<ElevatorCar> elevatorCars;
+    private final List<Floor> floors;
+    private final List<ElevatorCar> elevatorCars;
 
     private Building(){
         floors = new ArrayList<>();
@@ -29,33 +30,38 @@ public class Building {
     }
 
     public void addFloors(int numOfFloors){
-        for(int idx = totalFloors; idx <= numOfFloors; idx++){
-            Floor floor = new Floor(totalFloors++);
+        for(int idx = 0; idx <= numOfFloors; idx++){
+            Floor floor = new Floor(idx, ElevatorSystem.getInstance());
+            totalFloors++;
             floors.add(floor);
         }
     }
 
     public void addHallPanelAndDisplayForEachFloor(){
-        for(int i = 0; i <= totalFloors; i++){
-            for(int j = 1; j <= totalElevators; j++){
-                Floor floor = floors.get(i);
-                floor.addHallPanel(new HallPanel(j, (ElevatorRequestListener) floor));
+//        System.out.println(totalElevators);
+//        System.out.println(totalFloors);
+        for(int i = 0; i < totalFloors; i++){
+            Floor floor = floors.get(i);
+            for(int j = 0; j < totalElevators; j++){
+                floor.addHallPanel(new HallPanel(i, floor));
                 floor.addDisplay(elevatorCars.get(j).getDisplay());
             }
         }
     }
 
     public void addElevatorCars(int numOfElevatorCars){
-        for(int idx = totalElevators; idx < numOfElevatorCars; idx++){
+        for(int idx = 1; idx <= numOfElevatorCars; idx++){
 
             Door door = new Door();
             ElevatorPanel elevatorPanel = new ElevatorPanel();
             elevatorPanel.addFloorButtons(totalFloors);
             Display display = new Display();
 
-            ElevatorCar elevatorCar = new ElevatorCar(++totalElevators, door,
-                    elevatorPanel, display);
+            ElevatorCar elevatorCar = new ElevatorCar(idx, door,
+                    elevatorPanel, display, ElevatorSystem.getInstance());
 
+            totalElevators++;
+            elevatorCars.add(elevatorCar);
         }
         addHallPanelAndDisplayForEachFloor();
     }

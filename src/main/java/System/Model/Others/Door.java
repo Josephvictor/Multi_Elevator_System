@@ -1,6 +1,7 @@
 package System.Model.Others;
 
 import System.Enumerations.DoorState;
+import System.Enumerations.ElevatorState;
 
 public class Door {
     private DoorState doorState;

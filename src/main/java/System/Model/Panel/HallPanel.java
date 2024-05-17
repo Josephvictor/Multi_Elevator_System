@@ -33,13 +33,26 @@ public class HallPanel {
 
     public boolean upRequest(){
 
-        if(isPressedUp())   return true;
+        if(isPressedUp()){
+            System.out.println("Already requested");
+            return false;
+        }
+        pressedUp = true;
         up.pressButton();
-        eventListener.onFloorRequest(Direction.UP);
+        eventListener.onFloorRequest(floorNum, Direction.UP);
         return true;
     }
 
     public void downRequest(){
 
+    }
+
+    @Override
+    public String toString() {
+        return "HallPanel{" +
+                "floorNum=" + floorNum +
+                ", pressedDown=" + pressedDown +
+                ", pressedUp=" + pressedUp +
+                '}';
     }
 }

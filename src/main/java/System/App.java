@@ -8,12 +8,17 @@ public class App {
         elevatorSystem.addFloors(3);
         elevatorSystem.addElevators(3);
 
-        Building building = Building.getInstance();
-        Floor floor = building.getFloor(0);
+        Floor floor3 = elevatorSystem.getFloor(3);
+        floor3.getHallPanel(0).upRequest();
+//        try {
+//            Thread.sleep(5000);
+//        }catch (Exception e){
+//            System.out.println(e.getMessage());
+//        }
 
-        System.out.println(floor.getHallPanel(0).upRequest());
-        System.out.println(floor.getHallPanel(1).upRequest());
-        System.out.println(floor.getHallPanel(2).upRequest());
-        System.out.println(floor.getHallPanel(3).upRequest());
+        Floor floor1 = elevatorSystem.getFloor(1);
+        floor1.getHallPanel(1).upRequest();
+
+
     }
 }
