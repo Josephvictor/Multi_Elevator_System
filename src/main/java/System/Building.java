@@ -31,15 +31,14 @@ public class Building {
 
     public void addFloors(int numOfFloors){
         for(int idx = 0; idx <= numOfFloors; idx++){
-            Floor floor = new Floor(idx, ElevatorSystem.getInstance());
+            Floor floor = new Floor(idx, /*ERL*/ElevatorSystem.getInstance());
             totalFloors++;
             floors.add(floor);
         }
     }
 
     public void addHallPanelAndDisplayForEachFloor(){
-//        System.out.println(totalElevators);
-//        System.out.println(totalFloors);
+
         for(int i = 0; i < totalFloors; i++){
             Floor floor = floors.get(i);
             for(int j = 0; j < totalElevators; j++){

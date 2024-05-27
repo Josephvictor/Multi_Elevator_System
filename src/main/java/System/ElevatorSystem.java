@@ -4,10 +4,9 @@ import System.Enumerations.Direction;
 import System.Enumerations.ElevatorState;
 import System.Model.Others.ElevatorCar;
 import System.Model.Others.Floor;
+import System.Model.Panel.HallPanel;
 
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Queue;
+import java.util.*;
 
 public class ElevatorSystem implements ElevatorRequestListener, DoorControlListener{
     private final Building building;
@@ -32,8 +31,12 @@ public class ElevatorSystem implements ElevatorRequestListener, DoorControlListe
         building.addElevatorCars(elevators);
     }
 
-    public void addPendingRequest(int floor, Direction direction){
-        pendingRequests.offer(new Request(floor, direction, -1));
+    public void addPendingRequest(Request request){
+        pendingRequests.offer(request);
+    }
+
+    public boolean isTherePendingRequestsToProcess(){
+        return !pendingRequests.isEmpty();
     }
 
     public Request getPendingRequest(){
@@ -45,44 +48,49 @@ public class ElevatorSystem implements ElevatorRequestListener, DoorControlListe
     }
 
     @Override
-    public void onFloorRequest(int floor, Direction direction) {
-        ElevatorCar elevatorCar = dispatchElevator(floor, direction);
+    public void onFloorRequest(Request request) {
+        ElevatorCar elevatorCar = dispatchElevator(request);
         if(elevatorCar == null) {
             System.out.println("[ES] Please wait..All elevators are busy");
-            addPendingRequest(floor, direction);
+            addPendingRequest(request);
+            return;
         }
+        //As elevator car is allocated, move the request to the floor
+        building.getFloor(request.getSourceFloor()).addRequest(request);
 
         if(elevatorCar.getElevatorState() == ElevatorState.IDLE){
-            if(direction == Direction.UP) updateElevatorState(elevatorCar, ElevatorState.UP);
-            else updateElevatorState(elevatorCar, ElevatorState.DOWN);
-            Runnable r = () -> elevatorCar.moveElevator(floor);
+            updateElevatorState(elevatorCar, ElevatorState.MOVING, request.getDirection(),
+                    request.getDirection());
+            Runnable r = () -> elevatorCar.moveElevator(request.getSourceFloor());
             Thread thread = new Thread(r);
             thread.start();
         }else{
-
+            elevatorCar.addRequest(request.getSourceFloor());
         }
     }
 
-    private ElevatorCar dispatchElevator(int floor, Direction direction){
+    //Find the best elevator
+    private ElevatorCar dispatchElevator(Request request){
         List<ElevatorCar> elevatorCars = building.getElevatorCars();
         ElevatorCar selectedElevator = null;
         int bestDistance = (int)1e9;
+
         for(ElevatorCar ec : elevatorCars){
             int distance;
             if(ec.getElevatorState() == ElevatorState.IDLE){
                 int currentFloor = ec.getCurrentFloor();
                 //If the elevator is in the same floor as the requested floor and is idle
                 //immediately return that car
-                if(currentFloor == floor)   return ec;
-                distance = Math.abs(currentFloor - floor);
-            }else if(ec.getElevatorState().name().equalsIgnoreCase(direction.name())){
-                if(ec.getDestinationFloor() == -1)  continue;
-                if(direction == Direction.UP){
-                    if(ec.getCurrentFloor() > floor)    continue;
-                    distance = Math.abs(ec.getCurrentFloor() - floor);
+                if(currentFloor == request.getSourceFloor())   return ec;
+                distance = Math.abs(currentFloor - request.getSourceFloor());
+            }else if(ec.getDirection() == request.getDirection()){
+                if(!ec.isServingRequests()) continue;
+                if(request.getDirection() == Direction.UP){
+                    if(ec.getCurrentFloor() > request.getSourceFloor())    continue;
+                    distance = Math.abs(ec.getCurrentFloor() - request.getSourceFloor());
                 }else {
-                    if(ec.getCurrentFloor() < floor)    continue;
-                    distance = Math.abs(ec.getCurrentFloor() - floor);
+                    if(ec.getCurrentFloor() < request.getSourceFloor())    continue;
+                    distance = Math.abs(ec.getCurrentFloor() - request.getSourceFloor());
                 }
             }else{
                 continue;
@@ -96,15 +104,66 @@ public class ElevatorSystem implements ElevatorRequestListener, DoorControlListe
         return selectedElevator;
     }
 
-    private void controlDoor(ElevatorCar elevatorCar){
-        elevatorCar.setElevatorState(ElevatorState.IDLE);
-        openDoor(elevatorCar);
+    @Override
+    public void onFloorArrival(ElevatorCar elevatorCar) {
+        updateElevatorState(elevatorCar, ElevatorState.IDLE, Direction.NULL, null);
+        //elevatorCar.updateSourceFloor(request.getSourceFloor());
+
+        System.out.println("[ES] "+elevatorCar);
+        elevatorCar.openDoor();
+        System.out.println("[ES] "+ elevatorCar.getCurrentFloor() +" Opening Door..-- "+elevatorCar.getId());
+
+        getRequestsInsideElevator(elevatorCar);
+        elevatorCar.setServingRequests(true);
+
         try {
             Thread.sleep(3000);
         }catch (Exception e){
-            System.out.println(e.getMessage());
+            System.out.println("[ES] "+e.getMessage());
         }
-        closeDoor(elevatorCar);
+
+        System.out.println("[ES] "+ elevatorCar.getCurrentFloor() +" Closing Door..-- "+elevatorCar.getId());
+        elevatorCar.closeDoor();
+
+        processNextFloor(elevatorCar);
+    }
+
+    private void getRequestsInsideElevator(ElevatorCar elevatorCar){
+        List<Request> requests = null;
+        if(elevatorCar.getServingDirection() == Direction.UP)
+            requests = building.getFloor(elevatorCar.getCurrentFloor()).getUpRequests();
+        else
+            requests = building.getFloor(elevatorCar.getCurrentFloor()).getDownRequests();
+        if(requests.isEmpty())    return;
+        for(Request re : requests){
+            elevatorCar.addRequest(re.getDestinationFloor());
+        }
+        Floor floor = building.getFloor(elevatorCar.getCurrentFloor());
+        floor.removeRequests(requests);
+        for(HallPanel hp : floor.getHallPanelList()){
+            if(elevatorCar.getDirection() == Direction.UP){
+                hp.resetUpButton();
+            }else if(elevatorCar.getDirection() == Direction.DOWN){
+                hp.resetDownButton();
+            }
+        }
+    }
+
+    private void processNextFloor(ElevatorCar elevatorCar){
+        int nextStop = elevatorCar.getNextFloorToStop();
+        if(nextStop == -1){
+            System.out.println("[EC] All requests processed");
+            elevatorCar.resetElevator();
+            allocateElevatorToAPendingRequest(elevatorCar);
+        }else{
+            elevatorCar.moveElevator(nextStop);
+        }
+    }
+
+    private void allocateElevatorToAPendingRequest(ElevatorCar elevatorCar){
+        if(pendingRequests.isEmpty())   return;
+        Request request = pendingRequests.poll();
+        elevatorCar.moveElevator(request.getSourceFloor());
     }
 
     private void openDoor(ElevatorCar elevatorCar){
@@ -119,23 +178,12 @@ public class ElevatorSystem implements ElevatorRequestListener, DoorControlListe
         return building.getFloor(floor);
     }
 
-    private void updateElevatorState(ElevatorCar elevatorCar, ElevatorState elevatorState){
+    private void updateElevatorState(ElevatorCar elevatorCar, ElevatorState elevatorState,
+                                     Direction direction, Direction servingDirection){
         elevatorCar.setElevatorState(elevatorState);
+        elevatorCar.setDirection(direction);
+        if(servingDirection != null)
+            elevatorCar.setServingDirection(servingDirection);
     }
 
-
-    @Override
-    public void onFloorArrival(ElevatorCar elevatorCar) {
-        updateElevatorState(elevatorCar, ElevatorState.IDLE);
-        System.out.println("[ES] "+elevatorCar);
-        elevatorCar.openDoor();
-        System.out.println("[ES] "+ elevatorCar.getCurrentFloor() +" Opening Door..-- "+elevatorCar.getId());
-        try {
-            Thread.sleep(3000);
-        }catch (Exception e){
-            System.out.println("[ES] "+e.getMessage());
-        }
-        System.out.println("[ES] "+ elevatorCar.getCurrentFloor() +" Closing Door..-- "+elevatorCar.getId());
-        elevatorCar.closeDoor();
-    }
 }

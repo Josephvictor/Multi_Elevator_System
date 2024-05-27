@@ -1,5 +1,6 @@
 package System.Model.Panel;
 
+import System.Request;
 import System.ElevatorRequestListener;
 import System.Enumerations.Direction;
 import System.Model.Button.HallButon;
@@ -10,49 +11,37 @@ public class HallPanel {
     private final int floorNum;
     private final HallButon up;
     private final HallButon down;
-    private boolean pressedDown;
-    private boolean pressedUp;
     private ElevatorRequestListener eventListener;
 
 
     public HallPanel(int floorNum, ElevatorRequestListener eventListener){
         this.floorNum = floorNum;
-        this.up = new HallButon(Direction.UP);
-        this.down = new HallButon(Direction.DOWN);
+        this.up = new HallButon();
+        this.down = new HallButon();
         this.eventListener = eventListener;
-
     }
 
-    public void unpressDown(){
-        this.pressedDown = false;
+    public void processRequest(Request request){
+        if(request.getDirection() == Direction.UP)
+            upRequest(request);
+        else downRequest(request);
     }
 
-    public void unpressUp(){
-        this.pressedUp = false;
-    }
-
-    public boolean upRequest(){
-
-        if(isPressedUp()){
-            System.out.println("Already requested");
-            return false;
-        }
-        pressedUp = true;
+    public void upRequest(Request request){
         up.pressButton();
-        eventListener.onFloorRequest(floorNum, Direction.UP);
-        return true;
+        eventListener.onFloorRequest(request);
     }
 
-    public void downRequest(){
-
+    public void downRequest(Request request){
+        down.pressButton();
+        eventListener.onFloorRequest(request);
     }
 
-    @Override
-    public String toString() {
-        return "HallPanel{" +
-                "floorNum=" + floorNum +
-                ", pressedDown=" + pressedDown +
-                ", pressedUp=" + pressedUp +
-                '}';
+    public void resetUpButton(){
+        up.unpressButton();
+    }
+
+    public void resetDownButton(){
+        down.unpressButton();
     }
 }

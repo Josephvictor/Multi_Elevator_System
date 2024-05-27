@@ -1,5 +1,6 @@
 package System.Model.Others;
 
+import System.Request;
 import System.ElevatorRequestListener;
 import System.Enumerations.Direction;
 import System.Model.Panel.HallPanel;
@@ -15,19 +16,21 @@ public class Floor implements ElevatorRequestListener {
     private final List<Display> displayList;
     private boolean upRequested;
     private boolean downRequested;
-
+    private List<Request> upRequests;
+    private List<Request> downRequests;
     private ElevatorRequestListener listener;
 
 
     public Floor(int floorNumber, ElevatorRequestListener listener){
         this.floorNumber = floorNumber;
-        hallPanelList = new ArrayList<>();
-        displayList = new ArrayList<>();
+        this.hallPanelList = new ArrayList<>();
+        this.displayList = new ArrayList<>();
+        this.upRequests = new ArrayList<>();
+        this.downRequests = new ArrayList<>();
         this.listener = listener;
     }
 
     public void addHallPanel(HallPanel hallPanel){
-
         hallPanelList.add(hallPanel);
     }
 
@@ -39,6 +42,18 @@ public class Floor implements ElevatorRequestListener {
         return hallPanelList.get(num);
     }
 
+    public void addRequest(Request request){
+        if(request.getDirection() == Direction.UP)  upRequests.add(request);
+        else downRequests.add(request);
+    }
+
+    public void removeRequests(List<Request> requests){
+        if(requests.get(0).getDirection() == Direction.UP)
+            upRequests.removeAll(requests);
+        else
+            downRequests.removeAll(requests);
+    }
+
     public boolean isTop(){
         return false;
     }
@@ -48,21 +63,26 @@ public class Floor implements ElevatorRequestListener {
     }
 
     @Override
-    public void onFloorRequest(int floor, Direction direction) {
+    public void onFloorRequest(Request request) {
+        addRequest(request);
+        Direction direction = request.getDirection();
         if(direction == Direction.UP){
             if(upRequested){
-                System.out.println("Already requested");
+                System.out.println("[floor] Already requested");
                 return;
             }
             upRequested = true;
-            listener.onFloorRequest(floor, Direction.UP);
         }else if(direction == Direction.DOWN){
-            if(downRequested)   return;
+            if(downRequested){
+                System.out.println("[floor] Already requested");
+                return;
+            }
             downRequested = true;
-            listener.onFloorRequest(floor, Direction.DOWN);
         }else{
-            System.err.println("Invalid request");
+            System.err.println("[floor] Invalid request");
+            return;
         }
+        listener.onFloorRequest(request);
     }
 
     @Override

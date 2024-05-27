@@ -1,6 +1,10 @@
 package System;
 
+import System.Enumerations.Direction;
 import System.Model.Others.Floor;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class App {
     public static void main(String[] args) {
@@ -8,17 +12,18 @@ public class App {
         elevatorSystem.addFloors(3);
         elevatorSystem.addElevators(3);
 
-        Floor floor3 = elevatorSystem.getFloor(3);
-        floor3.getHallPanel(0).upRequest();
-//        try {
-//            Thread.sleep(5000);
-//        }catch (Exception e){
-//            System.out.println(e.getMessage());
-//        }
+        //Create some requests
+        List<Request> list = new ArrayList<>();
+        Request request1 = new Request(3, 0, Direction.UP, 5);
+        Request request2 = new Request(3, 1,  Direction.UP, 4);
+        //Request request3 = new Request(1, 2, Direction.UP, 5);
+        list.add(request1);
+        list.add(request2);
+        //list.add(request3);
 
-        Floor floor1 = elevatorSystem.getFloor(1);
-        floor1.getHallPanel(1).upRequest();
-
-
+        for(Request request : list){
+            Floor floor = elevatorSystem.getFloor(request.getSourceFloor());
+            floor.getHallPanel(request.getHallPanel()).processRequest(request);
+        }
     }
 }

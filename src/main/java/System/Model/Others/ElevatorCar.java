@@ -1,22 +1,27 @@
 package System.Model.Others;
 
+import System.Enumerations.Direction;
 import System.DoorControlListener;
 import System.Enumerations.ElevatorState;
 import System.Model.Panel.ElevatorPanel;
 import lombok.Data;
 
+import java.util.TreeSet;
+
 
 @Data
 public class ElevatorCar {
     private int id;
-    private ElevatorState elevatorState;
     private Door door;
     private ElevatorPanel elevatorPanel;
     private Display display;
-    private int currentFloor;
-    private int sourceFloor;
-    private int destinationFloor;
     private DoorControlListener doorControlListener;
+    private ElevatorState elevatorState;
+    private Direction direction;
+    private int currentFloor;
+    private boolean isServingRequests;
+    private Direction servingDirection;
+    private TreeSet<Integer> requests;
 
     public ElevatorCar(int id, Door door, ElevatorPanel elevatorPanel,
                        Display display, DoorControlListener doorControlListener) {
@@ -25,9 +30,11 @@ public class ElevatorCar {
         this.elevatorPanel = elevatorPanel;
         this.display = display;
         this.elevatorState = ElevatorState.IDLE;
+        this.direction = null;
         this.currentFloor = 0;
-        this.destinationFloor = -1;
-        this.sourceFloor = -1;
+        this.isServingRequests = false;
+        this.servingDirection = Direction.NULL;
+        requests = new TreeSet<>();
         this.doorControlListener = doorControlListener;
     }
 
@@ -49,15 +56,18 @@ public class ElevatorCar {
 
 
     public void moveElevator(int goToFloor){
-        int currentFloor = getCurrentFloor();
-
-        if(currentFloor > goToFloor){
-            moveDown(goToFloor);
+        if(currentFloor != goToFloor){
+            setElevatorState(ElevatorState.MOVING);
+            int currentFloor = getCurrentFloor();
+            if(currentFloor > goToFloor){
+                setDirection(Direction.DOWN);
+                moveDown(goToFloor);
+            }
+            else if(currentFloor < goToFloor){
+                setDirection(Direction.UP);
+                moveUp(goToFloor);
+            }
         }
-        else if(currentFloor < goToFloor){
-            moveUp(goToFloor);
-        }
-
         doorControlListener.onFloorArrival(this);
     }
 
@@ -86,8 +96,29 @@ public class ElevatorCar {
         }
     }
 
-    public void stopElevator(){
-        this.elevatorState = ElevatorState.IDLE;
+    public void addRequest(int floorNum){
+        requests.add(floorNum);
+    }
+
+    public int getNextFloorToStop(){
+        int nextStop = -1;
+        if(requests.isEmpty())  return nextStop;
+        if(servingDirection == Direction.UP){
+            nextStop = requests.first();
+            requests.pollFirst();
+        }
+        else if (servingDirection == Direction.DOWN){
+            nextStop =  requests.last();
+            requests.pollLast();
+        }
+        return nextStop;
+    }
+
+    public void resetElevator(){
+        elevatorState = ElevatorState.IDLE;
+        direction = Direction.NULL;
+        servingDirection = Direction.NULL;
+        isServingRequests = false;
     }
 
     @Override
